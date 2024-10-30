@@ -119,7 +119,7 @@ int dns_connect_to_end()
 
 int accept_new_connection()
 {
-	const int BACKLOG_SIZE = 30;
+	const int BACKLOG_SIZE = 30; // 监听队列的大小——设置30，最多能有60个
 	unsigned short port_num = 3333;
 	asio::ip::tcp::endpoint ep(asio::ip::address_v4::any(), port_num);
 	asio::io_context ios;
@@ -127,8 +127,8 @@ int accept_new_connection()
 		asio::ip::tcp::acceptor acceptor(ios, ep.protocol());
 		acceptor.bind(ep);
 		acceptor.listen(BACKLOG_SIZE);
-		asio::ip::tcp::socket sock(ios);
-		acceptor.accept(sock);
+		asio::ip::tcp::socket sock(ios); // 这个socket与acceptor不一样，是用来和客户端通信的
+		acceptor.accept(sock); // 接收器接受新的连接，交给sock来处理
 	}
 	catch (system::system_error& e) {
 		std::cout << "Error occured! Error code = " << e.code() << ".Message: " << e.what();
