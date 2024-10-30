@@ -135,3 +135,93 @@ int accept_new_connection()
 
 	}
 }
+
+void use_const_buffer()
+{
+	std::string buf = "hello world";
+	asio::const_buffer asio_buf(buf.c_str(), buf.length()); // 第一个参数是内存的首地址，第二个参数是长度
+	std::vector<asio::const_buffer> buffers_sequence;
+	buffers_sequence.push_back(asio_buf);
+
+	// 伪代码： asio.send(buffers_sequence);
+}
+
+void use_buffer_str()
+{
+	// asio提出了buffer()函数，该函数接收多种形式的字节流，该函数返回asio::mutable_buffers_1 或者asio::const_buffers_1结构的对象
+	asio::const_buffers_1 output_buf = asio::buffer("hello world");
+}
+
+void use_buffer_array()
+{
+	const size_t BUF_SIZE_BYTES = 20;
+	std::unique_ptr<char[]> buf(new char[BUF_SIZE_BYTES]); // 创建一个数组，内存首地址交给unique_ptr来管理，就不用担心内存回收的问题了
+	auto input_buf = asio::buffer(static_cast<void*>(buf.get()), BUF_SIZE_BYTES); // buf.get()获取裸指针，转为void*指针类型，长度是BUF_SIZE_BYTES
+}
+
+void write_to_socket(asio::ip::tcp::socket& sock)
+{
+	std::string buf = "Hello World!";
+	std::size_t total_bytes_written = 0;
+
+	// 循环发送
+	// writen_some 返回每次写入的字节数
+	while (total_bytes_written != buf.length())
+	{
+		total_bytes_written += sock.write_some(asio::buffer(buf.c_str() + total_bytes_written,
+			buf.length() - total_bytes_written)); // asio::buffer第一个参数：内存首地址=开始首地址+已发送的数据长度的一个偏移；第二个参数：长度=总长度-已发送的数据长度。
+		// 每次把已发完的做个累加，未发完的做个累加
+		// 为啥不能直接发送完所有数据？？？
+		// 有buffer用户发送缓冲区和tcp发送缓冲区
+		// tcp发送缓冲区中可能有上次未发送完成的数据。发送时的长度=上次未发送的数据长度+此次数据长度。若大于整个tcp缓冲区则会截取数据下次发送
+	}
+}
+
+// 客户端发数据——同步方式：用循环多次发送数据——write_to_socket
+int send_data_by_write_some()
+{
+	std::string raw_ip_address = "192.168.3.11";
+	unsigned short port_num = 3333;
+	try {
+		asio::ip::tcp::endpoint ep(asio::ip::address::from_string(raw_ip_address), port_num);
+		asio::io_context ioc;
+		asio::ip::tcp::socket sock(ioc, ep.protocol());
+		sock.connect(ep);
+		write_to_socket(sock);
+	}
+	catch (system::system_error& e)
+	{
+		std::cout << "Error occured! Error code = " << e.code() << ". Message: " << e.what();
+		return e.code().value();
+	}
+	return 0;
+}
+
+// 客户端发数据——同步方式：一次性发送所有数据,没发完tcp就阻塞在那里。直到全部发完——send
+int send_data_by_write_some()
+{
+	std::string raw_ip_address = "192.168.3.11";
+	unsigned short port_num = 3333;
+	try {
+		asio::ip::tcp::endpoint ep(asio::ip::address::from_string(raw_ip_address), port_num);
+		asio::io_context ioc;
+		asio::ip::tcp::socket sock(ioc, ep.protocol());
+		sock.connect(ep);
+		std::string buf = "Hello World!";
+		int send_length = sock.send(asio::buffer(buf.c_str(), buf.length()));
+		// send_length只会出现三种情况
+		// <0: 出现系统级的错误
+		// =0: 对端关闭
+		// >0: 一定是buf.length()的长度，发送成功
+		if (send_length <= 0)
+		{
+			return 0;
+		}
+	}
+	catch (system::system_error& e)
+	{
+		std::cout << "Error occured! Error code = " << e.code() << ". Message: " << e.what();
+		return e.code().value();
+	}
+	return 0;
+}
