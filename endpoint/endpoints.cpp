@@ -159,6 +159,9 @@ void use_buffer_array()
 	auto input_buf = asio::buffer(static_cast<void*>(buf.get()), BUF_SIZE_BYTES); // buf.get()获取裸指针，转为void*指针类型，长度是BUF_SIZE_BYTES
 }
 
+
+/*------------------写操作------------------------*/
+
 void write_to_socket(asio::ip::tcp::socket& sock)
 {
 	std::string buf = "Hello World!";
@@ -177,6 +180,8 @@ void write_to_socket(asio::ip::tcp::socket& sock)
 	}
 }
 
+// 串联整个写的流程
+// 
 // 客户端发数据——同步方式：用循环多次发送数据——write_to_socket
 int send_data_by_write_some()
 {
@@ -198,7 +203,7 @@ int send_data_by_write_some()
 }
 
 // 客户端发数据——同步方式：一次性发送所有数据,没发完tcp就阻塞在那里。直到全部发完——send
-int send_data_by_write_some()
+int send_data_by_send()
 {
 	std::string raw_ip_address = "192.168.3.11";
 	unsigned short port_num = 3333;
@@ -220,6 +225,126 @@ int send_data_by_write_some()
 	}
 	catch (system::system_error& e)
 	{
+		std::cout << "Error occured! Error code = " << e.code() << ". Message: " << e.what();
+		return e.code().value();
+	}
+	return 0;
+}
+
+// 客户端发数据——同步方式：一次性发送所有数据,没发完tcp就阻塞在那里。直到全部发完——全局函数write
+int send_data_by_write()
+{
+	std::string raw_ip_address = "192.168.3.11";
+	unsigned short port_num = 3333;
+	try {
+		asio::ip::tcp::endpoint ep(asio::ip::address::from_string(raw_ip_address), port_num);
+		asio::io_context ioc;
+		asio::ip::tcp::socket sock(ioc, ep.protocol());
+		sock.connect(ep);
+		std::string buf = "Hello World!";
+		int send_length = asio::write(sock, asio::buffer(buf.c_str(), buf.length()));
+		// send_length只会出现三种情况
+		// <0: 出现系统级的错误
+		// =0: 对端关闭
+		// >0: 一定是buf.length()的长度，发送成功
+		if (send_length <= 0)
+		{
+			return 0;
+		}
+	}
+	catch (system::system_error& e)
+	{
+		std::cout << "Error occured! Error code = " << e.code() << ". Message: " << e.what();
+		return e.code().value();
+	}
+	return 0;
+}
+
+
+/*------------------读操作------------------------*/
+std::string read_from_socket(asio::ip::tcp::socket& sock)
+{
+	const unsigned char MESSAGE_SIZE = 7; // 消息长度
+	char buf[MESSAGE_SIZE];
+	std::size_t total_bytes_read = 0;
+	// 循环读
+	while (total_bytes_read != MESSAGE_SIZE)
+	{
+		total_bytes_read += sock.read_some(asio::buffer(buf + total_bytes_read, MESSAGE_SIZE - total_bytes_read));
+	}
+	return std::string(buf, total_bytes_read);
+}
+
+// 串联整个读的流程
+//
+// 客户端读数据——同步方式：如果对方不发数据，就会一直阻塞在这里——read_some
+int read_data_by_read_some()
+{
+	std::string raw_ip_address = "127.0.0.1";
+	unsigned short port_num = 3333;
+	try {
+		asio::ip::tcp::endpoint ep(asio::ip::address::from_string(raw_ip_address), port_num);
+		asio::io_context ioc;
+		asio::ip::tcp::socket sock(ioc, ep.protocol());
+		read_from_socket(sock);
+	}
+	catch (system::system_error& e){
+		std::cout << "Error occured! Error code = " << e.code() << ". Message: " << e.what();
+		return e.code().value();
+	}
+	return 0;
+}
+
+// 客户端读数据——同步方式：如果对方不发数据，就会一直阻塞在这里——read_some
+int read_data_by_read_receive()
+{
+	std::string raw_ip_address = "127.0.0.1";
+	unsigned short port_num = 3333;
+	try {
+		asio::ip::tcp::endpoint ep(asio::ip::address::from_string(raw_ip_address), port_num);
+		asio::io_context ioc;
+		asio::ip::tcp::socket sock(ioc, ep.protocol());
+		const unsigned char BUFF_SIZE = 7;
+		char buffer_receive[BUFF_SIZE];
+		int receive_length = sock.receive(asio::buffer(buffer_receive, BUFF_SIZE));
+		// 返回值receive_length只有三种情况：
+		// <0: 发生系统级的错误
+		// =0: 对端关闭
+		// >0: 肯定等于BUFF_SIZE.一次性全部读完数据
+		if (receive_length <= 0)
+		{
+			std::cout << "receive failed" << std::endl;
+		}
+	}
+	catch (system::system_error& e) {
+		std::cout << "Error occured! Error code = " << e.code() << ". Message: " << e.what();
+		return e.code().value();
+	}
+	return 0;
+}
+
+// 客户端读数据——同步方式：如果对方不发数据，就会一直阻塞在这里——全局函数read
+int read_data_by_read_read()
+{
+	std::string raw_ip_address = "127.0.0.1";
+	unsigned short port_num = 3333;
+	try {
+		asio::ip::tcp::endpoint ep(asio::ip::address::from_string(raw_ip_address), port_num);
+		asio::io_context ioc;
+		asio::ip::tcp::socket sock(ioc, ep.protocol());
+		const unsigned char BUFF_SIZE = 7;
+		char buffer_receive[BUFF_SIZE];
+		int receive_length = asio::read(sock, asio::buffer(buffer_receive, BUFF_SIZE));
+		// 返回值receive_length只有三种情况：
+		// <0: 发生系统级的错误
+		// =0: 对端关闭
+		// >0: 肯定等于BUFF_SIZE.一次性全部读完数据
+		if (receive_length <= 0)
+		{
+			std::cout << "receive failed" << std::endl;
+		}
+	}
+	catch (system::system_error& e) {
 		std::cout << "Error occured! Error code = " << e.code() << ". Message: " << e.what();
 		return e.code().value();
 	}

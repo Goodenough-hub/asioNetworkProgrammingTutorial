@@ -11,4 +11,7 @@ extern int connect_to_end(); // 客户端——连接操作
 extern int dns_connect_to_end(); // 客户端——解析域名，再实现从客户端到服务器的连接
 extern int accept_new_connection(); // 服务器端——接受一个连接
 
+// const_buffer
 extern void use_const_buffer();
+extern void use_buffer_str();
+extern void use_buffer_array(); // 数据是char类型的数据
