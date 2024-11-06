@@ -1,7 +1,7 @@
 ﻿
 #include <iostream>
 #include <boost/asio.hpp>
-#include "Session.h"
+#include "CServer.h"
 
 int main()
 {
@@ -9,7 +9,7 @@ int main()
     {
         boost::asio::io_context ioc;
         using namespace std;
-        Server s(ioc, 10086);
+        CServer s(ioc, 10086);
         ioc.run();
     }
     catch (std::exception& e)
